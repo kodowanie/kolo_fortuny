@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koło Fortuny - 2 Graczy</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <style>
+        /* 1. REJESTRACJA CZCIONEK LOKALNYCH (OFFLINE) */
+        @font-face {
+            font-family: 'MontserratTile';
+            src: url('Montserrat-Bold.ttf') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }
+
+        @font-face {
+            font-family: 'RanchersCustom';
+            src: url('Ranchers-Regular.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #020617;
+            color: #ffffff;
+            font-family: 'RanchersCustom', cursive, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #main-stage {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+            background-size: cover;
+            background-position: center;
+            transition: background-image 0.5s ease-in-out;
+            overflow: hidden;
+        }
+
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #category-badge {
+            background: transparent;
+            padding: 10px 0;
+            font-size: 28px;
+            font-weight: 900;
+            border: none;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9), 0 0 15px rgba(56, 189, 248, 0.6);
+            margin-bottom: 25px;
+            letter-spacing: 3px;
+            box-shadow: none;
+            text-align: center;
+            color: #cbf3fd;
+            font-family: 'RanchersCustom', cursive, sans-serif;
+        }
+
+        #board {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            gap: 20px 55px;
+            width: 95%;
+            max-width: 1400px;
+            background: rgba(0, 4, 17, 0.5);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border: 12px solid rgba(56, 189, 248, 0.5);
+            border-radius: 20px;
+            box-shadow: 0 0 50px rgba(56, 189, 248, 0.3), inset 0 0 30px rgba(0, 0, 0, 0.5);
+            perspective: 1000px;
+            /* Minimalna wysokość na dokładnie 3 linie */
+            min-height: 414px;
+        }
+
+        #winner-announcement {
+            position: absolute;
+            bottom: 55px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 38px;
+            font-weight: 900;
+            color: #57df1a;
+            text-shadow: 0 0 25px rgba(0, 255, 102, 0.9), 3px 3px 6px #000;
+            text-align: center;
+            letter-spacing: 2px;
+            z-index: 50;
+            pointer-events: none;
+            width: 90%;
+            animation: pulseWinner 1.2s infinite alternate ease-in-out;
+            font-family: 'RanchersCustom', cursive, sans-serif;
+        }
+
+        @keyframes pulseWinner {
+            0% { transform: translateX(-50%) scale(1); filter: drop-shadow(0 0 10px #00ff66); }
+            100% { transform: translateX(-50%) scale(1.08); filter: drop-shadow(0 0 25px #00ff66); }
+        }
+
+        .word {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 10px;
+        }
+
+        .letter-box {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'MontserratTile', sans-serif !important;
+            font-size: 48px;
+            font-weight: 900;
+            box-shadow: 3px 3px 8px rgba(0,0,0,0.7);
+            transition: transform 0.4s ease, background 0.4s ease;
+            backface-visibility: hidden;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 100% 100%;
+            border-radius: 8px;
+            border: none !important;
+            margin: 0;
+            padding: 0;
+        }
+
+        .letter-box.revealed-letter {
+            background-image: none !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            outline: 3px solid #dbffff;
+            outline-offset: -3px;
+        }
+
+        .letter-box.hidden-letter {
+            color: transparent;
+        }
+
+        .letter-box.reveal-anim {
+            animation: flipIn 0.6s ease-out forwards;
+        }
+
+        @keyframes flipIn {
+            0% { transform: rotateY(90deg); }
+            100% { transform: rotateY(0deg); }
+        }
+
+        #wheel-screen {
+            background: transparent;
+            backdrop-filter: none;
+            cursor: default;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 0;
+        }
+
+        #wheel-screen.clickable {
+            cursor: pointer;
+        }
+
+        #wheel-crop-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            border-bottom: none;
+            border-radius: 0;
+            box-shadow: none;
+            background: transparent;
+            padding: 0;
+        }
+
+        #wheel-container {
+            position: relative;
+            width: min(85vw, 1250px);
+            height: min(85vw, 1250px);
+            transform: translateY(45%);
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: none;
+        }
+
+        #pointer {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 65px;
+            height: 65px;
+            z-index: 20;
+            filter: drop-shadow(0px 6px 10px rgba(0,0,0,0.9));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform-origin: 50% 0%;
+            transition: transform 0.05s ease-out;
+        }
+
+        .pointer-bounce {
+            animation: pointerTick 0.08s ease-out;
+        }
+
+        @keyframes pointerTick {
+            0% { transform: translateX(-50%) rotate(0deg) scale(1); }
+            35% { transform: translateX(-50%) rotate(-5deg) scale(1.02); }
+            70% { transform: translateX(-50%) rotate(2deg) scale(1.01); }
+            100% { transform: translateX(-50%) rotate(0deg) scale(1); }
+        }
+
+        #pointer-fallback {
+            width: 50px;
+            height: 60px;
+            background: radial-gradient(circle at 50% 30%, #ffe066 0%, #d4af37 60%, #996515 100%);
+            clip-path: polygon(50% 100%, 0% 0%, 100% 0%);
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.8));
+            border-radius: 4px;
+        }
+
+        #pointer img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        #wheel-crop-wrapper.full-view {
+            align-items: center;
+        }
+
+        #wheel-crop-wrapper.full-view #wheel-container {
+            width: min(80vw, 65vh);
+            height: min(80vw, 65vh);
+            transform: translateY(0);
+        }
+
+        #wheel-crop-wrapper.full-view #pointer {
+            top: -20px;
+            width: 55px;
+            height: 55px;
+        }
+
+        #controls-bar {
+            height: 175px;
+            background: #0a0d1d;
+            border-top: 3px solid rgba(56, 189, 248, 0.6);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 25px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.8);
+            z-index: 100;
+            position: relative;
+            transform: translateY(-50px);
+        }
+
+        #message-banner {
+            width: 100%;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 800;
+            color: #38bdf8;
+            text-shadow: 2px 2px 4px #000;
+            letter-spacing: 1px;
+            min-height: 28px;
+            transition: color 0.3s ease;
+            font-family: 'RanchersCustom', cursive, sans-serif;
+        }
+
+        #message-banner.error {
+            color: #ff4d4d;
+            animation: shake 0.4s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+
+        #message-banner.success {
+            color: #57df1a;
+        }
+
+        #hud-controls-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            position: relative;
+        }
+
+        .sliding-crown {
+            position: absolute;
+            top: -110px;
+            left: 0;
+            width: 90px;
+            height: 90px;
+            z-index: 20;
+            transition: transform 0.6s cubic-bezier(0.42, 0, 0.58, 1);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .crown-bounce {
+            font-size: 51px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.9));
+            animation: bounceCrown 1.6s infinite alternate cubic-bezier(0.42, 0, 0.58, 1);
+        }
+
+        .crown-bounce img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        @keyframes bounceCrown {
+            0% { transform: translateY(0) scale(1); }
+            100% { transform: translateY(-10px) scale(1.15); }
+        }
+
+        .player-card {
+            position: relative;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            transition: transform 0.3s ease, filter 0.3s ease;
+            box-sizing: border-box;
+            min-width: 180px;
+            min-height: 80px;
+        }
+
+        .player-card.active {
+            filter: drop-shadow(0 0 15px rgba(56, 189, 248, 0.8));
+            transform: translateY(-4px) scale(1.05);
+        }
+
+        #p1-card, #p2-card {
+            transform: translateY(-20px);
+        }
+
+        #p1-card.active, #p2-card.active {
+            transform: translateY(-25px) scale(1.05);
+        }
+
+        .player-title {
+            font-size: 20px;
+            font-weight: 900;
+            color: #eeeeee;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 4px #000;
+            text-align: center;
+            font-family: 'RanchersCustom', cursive, sans-serif;
+            margin-left: 90px;
+            margin-top: 25px;
+        }
+
+        .player-score {
+            font-size: 40px;
+            font-weight: 900;
+            color: #57df1a;
+            text-shadow: 0px 0px 8px rgba(0,0,0,0.9), 2px 2px 4px #000;
+            text-align: left;
+            font-family: 'RanchersCustom', cursive, sans-serif;
+            position: relative;
+            left: 130px;
+            top: -10px;
+            width: calc(100% - 30px);
+            white-space: nowrap;
+        }
+
+        .turn-badge {
+            font-size: 13px;
+            font-weight: 900;
+            padding: 5px 14px;
+            border-radius: 16px;
+            background: #0284c7;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+            text-shadow: 1px 1px 2px #000;
+            box-shadow: 0 0 10px rgba(2, 132, 199, 0.8);
+            text-align: center;
+            white-space: nowrap;
+            font-family: 'RanchersCustom', cursive, sans-serif;
+            margin-left: 95px;
+            position: relative;
+            top: -10px;
+        }
+
+        .player-card:not(.active) .turn-badge {
+            background: #334155;
+            color: #94a3b8;
+            box-shadow: none;
+        }
+
+        .center-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .btn {
+            background: linear-gradient(to bottom, #38bdf8 0%, #0284c7 100%);
+            border: 2px solid #ffffff;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            font-family: 'RanchersCustom', cursive, sans-serif;
+            font-weight: 900;
+            font-size: 15px;
+            padding: 12px 24px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: opacity 0.2s, transform 0.1s;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn:hover { opacity: 0.9; }
+        .btn:active { transform: scale(0.96); }
+
+        .btn:disabled {
+            filter: grayscale(100%) opacity(50%);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        #input-section {
+            display: none;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #letter-input {
+            width: 60px;
+            height: 48px;
+            font-size: 28px;
+            text-align: center;
+            text-transform: uppercase;
+            border-radius: 6px;
+            border: 2px solid #38bdf8;
+            background: #000;
+            color: #fff;
+            font-weight: 900;
+            font-family: 'MontserratTile', sans-serif;
+        }
+
+        #top-right-toolbar {
+            position: absolute;
+            top: 12px;
+            right: 15px;
+            z-index: 200;
+            display: flex;
+            gap: 8px;
+        }
+
+        .toolbar-btn {
+            background: rgba(15, 23, 42, 0.85);
+            border: 2px solid #38bdf8;
+            color: #38bdf8;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-family: 'RanchersCustom', cursive, sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .toolbar-btn:hover {
+            background: #38bdf8;
+            color: #020617;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.8);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-stage">
+        <div id="top-right-toolbar">
+            <button id="wheel-toggle-btn" class="toolbar-btn" onclick="toggleWheelView(event)">🎡 Widok: Połowa Koła</button>
+        </div>
+
+        <div id="board-screen" class="screen">
+            <div id="category-badge">KATEGORIA: UKŁAD OKRESOWY PIERWIASTKÓW</div>
+            <div id="board"></div>
+            <div id="winner-announcement" class="hidden"></div>
+        </div>
+
+        <div id="wheel-screen" class="screen hidden">
+            <div id="wheel-crop-wrapper">
+                <div id="wheel-container">
+                    <div id="pointer">
+                        <div id="pointer-fallback"></div>
+                    </div>
+                    <canvas id="canvas" width="900" height="900"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="controls-bar">
+        <div id="message-banner">RUCH MA DRUŻYNA 1 - ZAKRĘĆ KOŁEM LUB KUP LITERĘ!</div>
+
+        <div id="hud-controls-container">
+            <div id="sliding-crown" class="sliding-crown">
+                <div id="crown-content" class="crown-bounce">👑</div>
+            </div>
+
+            <div class="player-card active" id="p1-card">
+                <div class="player-title">DRUŻYNA 1</div>
+                <div class="player-score" id="p1-score">0 pkt</div>
+                <div class="turn-badge" id="p1-badge">RUCH DRUŻYNY 1</div>
+            </div>
+
+            <div class="center-controls">
+                <div id="action-buttons" class="btn-group">
+                    <button id="spin-btn" class="btn" onclick="startSpinningFlow(event)">Zakręć kołem</button>
+                    <button id="buy-letter-btn" class="btn" onclick="buyLetterFlow(event)">Kup literę (1000 pkt)</button>
+                </div>
+                
+                <div id="input-section">
+                    <label for="letter-input" style="font-size: 16px; color: #38bdf8; font-weight: 800; font-family: 'RanchersCustom', cursive, sans-serif;">LITERA:</label>
+                    <input type="text" id="letter-input" maxlength="1" autocomplete="off">
+                    <button id="submit-letter-btn" class="btn" style="padding: 8px 18px; font-size: 16px;" onclick="guessLetter(event)">Zatwierdź</button>
+                </div>
+            </div>
+
+            <div class="player-card" id="p2-card">
+                <div class="player-title">DRUŻYNA 2</div>
+                <div class="player-score" id="p2-score">0 pkt</div>
+                <div class="turn-badge" id="p2-badge">CZEKA...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let CUSTOM_WHEEL_IMAGE_SRC = "kolo.png";       
+        let CUSTOM_BG_IMAGE_SRC = "background.png";    
+        let CUSTOM_POINTER_IMAGE_SRC = "pointer.png";         
+        let CUSTOM_EMOJI_IMAGE_SRC = "hipek.png";      
+
+        let CUSTOM_PLAYER1_BG_SRC = "player1.png";     
+        let CUSTOM_PLAYER2_BG_SRC = "player2.png";     
+        let CUSTOM_BOARD_BG_SRC = "board_bg.png";      
+        let CUSTOM_LETTER_BG_SRC = "letter_tile.png";  
+
+        let CUSTOM_SPIN_BTN_BG_SRC = "button_spin.png";     
+        let CUSTOM_BUY_BTN_BG_SRC = "button_buy.png";       
+        let CUSTOM_SUBMIT_BTN_BG_SRC = "button_submit.png"; 
+
+        const ENABLE_SOUND = false;
+
+        let categoryText = "FILM SCIENCE FICTION";
+        let puzzleWord = "TABLICA MENDELEJEWA W KLASIE CHEMICZNEJ";
+        let guessedLetters = [];
+        let puzzleBoxes = []; 
+        
+        let activePlayer = 1;
+        let scores = { 1: 0, 2: 0 };
+        let displayedScores = { 1: 0, 2: 0 };
+        let scoreIntervals = { 1: null, 2: null };
+        
+        let spunPrize = 0;
+        let isSpinning = false;
+        let canProceedToBoard = false;
+        let pendingCanGuess = false;
+        let isFullView = false;
+
+        let letterTileWidth = 65;
+        let letterTileHeight = 90;
+
+        if (CUSTOM_LETTER_BG_SRC) {
+            const tileImg = new Image();
+            tileImg.src = CUSTOM_LETTER_BG_SRC;
+            tileImg.onload = () => {
+                letterTileWidth = tileImg.naturalWidth || 65;
+                letterTileHeight = tileImg.naturalHeight || 90;
+                drawBoard();
+            };
+        }
+
+        const sectors = [
+            { label: "300 pkt", val: 300, color: "#9b59b6" },
+            { label: "STRATA KOLEJKI", val: "STRATA", color: "#b91c1c" },
+            { label: "100 pkt", val: 100, color: "#1abc9c" },
+            { label: "50 pkt", val: 50, color: "#2ecc71" },
+            { label: "BANKRUT", val: "BANKRUT", color: "#111111" },
+            { label: "150 pkt", val: 150, color: "#8b5cf6" },
+            { label: "ŚPIEWAJ", val: "ŚPIEWAJ", color: "#eab308" },
+            { label: "200 pkt", val: 200, color: "#f39c12" },
+            { label: "KUPON NP VIP", val: "KUPON NP VIP", color: "#0284c7" },
+            { label: "GŁOS ŻABY", val: "GŁOS ŻABY", color: "#10b981" },
+            { label: "150 pkt", val: 150, color: "#8b5cf6" },
+            { label: "DZIEŃ WOLNY OD SZKOŁY", val: "DZIEŃ WOLNY", color: "#06b6d4" }
+        ];
+
+        const numSectors = sectors.length;
+        const arcSize = (2 * Math.PI) / numSectors;
+
+        /* NASŁUCHIWANIE KLIKNIĘĆ W DOWOLNYM MIEJSCU EKRANU (GLOBALNIE) */
+        window.addEventListener("click", function(event) {
+            // Ignoruj kliknięcie, jeśli koło się kręci albo nie ma oczekiwania na przejście
+            if (!canProceedToBoard || isSpinning) return;
+
+            // Ignoruj kliknięcie, jeśli kliknięto przycisk zmiany widoku koła
+            if (event.target && event.target.id === "wheel-toggle-btn") return;
+
+            canProceedToBoard = false;
+            document.getElementById("wheel-screen").classList.add("hidden");
+            document.getElementById("board-screen").classList.remove("hidden");
+
+            if (pendingCanGuess) {
+                document.getElementById("action-buttons").style.display = "none";
+                document.getElementById("input-section").style.display = "flex";
+                document.getElementById("letter-input").focus();
+                showMessage(`DRUŻYNA ${activePlayer}: WPISZ LITERĘ I ZATWIERDŹ!`, "success");
+            } else {
+                const prevP = activePlayer;
+                const nextP = activePlayer === 1 ? 2 : 1;
+                finishTurn(true, `🛑 DRUŻYNA ${prevP} STRACIŁA RUCH! TERAZ RUCH MA DRUŻYNA ${nextP}. ZAKRĘĆ KOŁEM LUB KUP LITERĘ!`);
+            }
+        }, true);
+
+        function setBackgroundImage(src) {
+            const mainStage = document.getElementById("main-stage");
+            if (src && mainStage) {
+                const img = new Image();
+                img.src = src;
+                img.onload = () => {
+                    mainStage.style.backgroundImage = `url("${src}")`;
+                };
+            }
+        }
+
+        function setPointerImage(src) {
+            const pointerContainer = document.getElementById("pointer");
+            if (!pointerContainer) return;
+
+            if (src) {
+                const img = new Image();
+                img.src = src;
+                img.onload = () => {
+                    pointerContainer.innerHTML = "";
+                    pointerContainer.appendChild(img);
+                };
+                img.onerror = () => {
+                    renderPointerFallback();
+                };
+            } else {
+                renderPointerFallback();
+            }
+        }
+
+        function renderPointerFallback() {
+            const pointerContainer = document.getElementById("pointer");
+            if (pointerContainer) {
+                pointerContainer.innerHTML = '<div id="pointer-fallback"></div>';
+            }
+        }
+
+        function setEmojiImage(src) {
+            const crownContent = document.getElementById("crown-content");
+            if (!crownContent) return;
+
+            if (src) {
+                const img = new Image();
+                img.src = src;
+                img.alt = "ikona korony";
+                img.onload = () => {
+                    crownContent.innerHTML = "";
+                    crownContent.appendChild(img);
+                    updateCrownPosition();
+                };
+                img.onerror = () => {
+                    crownContent.innerHTML = "👑";
+                };
+            } else {
+                crownContent.innerHTML = "👑";
+            }
+        }
+
+        function setPlayerCardImages(p1Src, p2Src) {
+            const card1 = document.getElementById("p1-card");
+            const card2 = document.getElementById("p2-card");
+
+            if (card1 && p1Src) {
+                const img1 = new Image();
+                img1.src = p1Src;
+                img1.onload = () => {
+                    card1.style.width = img1.naturalWidth + "px";
+                    card1.style.height = img1.naturalHeight + "px";
+                    card1.style.backgroundImage = `url("${p1Src}")`;
+                    updateCrownPosition();
+                };
+            }
+
+            if (card2 && p2Src) {
+                const img2 = new Image();
+                img2.src = p2Src;
+                img2.onload = () => {
+                    card2.style.width = img2.naturalWidth + "px";
+                    card2.style.height = img2.naturalHeight + "px";
+                    card2.style.backgroundImage = `url("${p2Src}")`;
+                    updateCrownPosition();
+                };
+            }
+        }
+
+        function setBoardBackgroundImage(src) {
+            const board = document.getElementById("board");
+            if (board && src) {
+                board.style.backgroundImage = `url("${src}")`;
+                board.style.backgroundSize = "cover";
+                board.style.backgroundPosition = "center";
+            }
+        }
+
+        function setButtonImages(spinSrc, buySrc, submitSrc) {
+            const applyBtnStyle = (btnId, src, fallbackText) => {
+                const btn = document.getElementById(btnId);
+                if (!btn) return;
+
+                if (!src) {
+                    btn.innerText = fallbackText;
+                    return;
+                }
+
+                const img = new Image();
+                img.src = src;
+                img.onload = () => {
+                    btn.style.width = img.naturalWidth + "px";
+                    btn.style.height = img.naturalHeight + "px";
+                    btn.style.backgroundImage = `url("${src}")`;
+                    btn.style.backgroundColor = "transparent";
+                    btn.style.border = "none";
+                    btn.innerText = "";
+                };
+                img.onerror = () => {
+                    btn.innerText = fallbackText;
+                };
+            };
+
+            applyBtnStyle("spin-btn", spinSrc, "ZAKRĘĆ KOŁEM");
+            applyBtnStyle("buy-letter-btn", buySrc, "KUP LITERĘ (1000 PKT)");
+            applyBtnStyle("submit-letter-btn", submitSrc, "ZATWIERDŹ");
+        }
+
+        function updateCrownPosition() {
+            const crown = document.getElementById("sliding-crown");
+            const activeCard = document.getElementById(`p${activePlayer}-card`);
+            const container = document.getElementById("hud-controls-container");
+            if (!crown || !activeCard || !container) return;
+
+            const containerRect = container.getBoundingClientRect();
+            const cardRect = activeCard.getBoundingClientRect();
+
+            const targetX = cardRect.left - containerRect.left + (cardRect.width / 2) - (crown.offsetWidth / 2);
+            crown.style.transform = `translateX(${targetX}px)`;
+        }
+
+        function toggleWheelView(e) {
+            if (e) e.stopPropagation();
+            const wrapper = document.getElementById("wheel-crop-wrapper");
+            const btn = document.getElementById("wheel-toggle-btn");
+
+            isFullView = !isFullView;
+
+            if (isFullView) {
+                wrapper.classList.add("full-view");
+                btn.innerText = "🎡 Widok: Pełne Koło";
+            } else {
+                wrapper.classList.remove("full-view");
+                btn.innerText = "🎡 Widok: Połowa Koła";
+            }
+        }
+
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        let loadedCustomWheelImg = null;
+        if (CUSTOM_WHEEL_IMAGE_SRC) {
+            loadedCustomWheelImg = new Image();
+            loadedCustomWheelImg.src = CUSTOM_WHEEL_IMAGE_SRC;
+            loadedCustomWheelImg.onload = () => {
+                drawWheel();
+            };
+        }
+
+        function drawWheel() {
+            const size = canvas.width;
+            const center = size / 2;
+            const radius = center - 20;
+            ctx.clearRect(0, 0, size, size);
+
+            if (loadedCustomWheelImg && loadedCustomWheelImg.complete && loadedCustomWheelImg.naturalWidth !== 0) {
+                ctx.drawImage(loadedCustomWheelImg, 0, 0, size, size);
+                return;
+            }
+
+            for (let i = 0; i < numSectors; i++) {
+                let angle = i * arcSize;
+                ctx.fillStyle = sectors[i].color;
+                
+                ctx.beginPath();
+                ctx.moveTo(center, center);
+                ctx.arc(center, center, radius, angle, angle + arcSize);
+                ctx.lineTo(center, center);
+                ctx.fill();
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = Math.max(3, Math.floor(size / 200));
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(center, center);
+                ctx.rotate(angle + arcSize / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#ffffff";
+
+                let text = sectors[i].label;
+                let fontSize = Math.floor(size * 0.038);
+                if (text.length > 18) fontSize = Math.floor(size * 0.022);
+                else if (text.length > 14) fontSize = Math.floor(size * 0.026);
+                else if (text.length > 9) fontSize = Math.floor(size * 0.030);
+
+                ctx.font = `900 ${fontSize}px RanchersCustom, cursive, sans-serif`;
+                ctx.fillText(text, radius - 25, fontSize / 3);
+                ctx.restore();
+            }
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(center, center, Math.floor(size * 0.1), 0, 2 * Math.PI);
+            ctx.fillStyle = "#020617";
+            ctx.fill();
+            ctx.lineWidth = Math.max(5, Math.floor(size / 120));
+            ctx.strokeStyle = "#38bdf8";
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawBoard() {
+            const board = document.getElementById("board");
+            board.innerHTML = "";
+            puzzleBoxes = [];
+            
+            const words = puzzleWord.split(" ");
+
+            words.forEach(wordText => {
+                const wordDiv = document.createElement("div");
+                wordDiv.className = "word";
+
+                for (let i = 0; i < wordText.length; i++) {
+                    const char = wordText[i];
+                    const box = document.createElement("div");
+
+                    box.style.width = letterTileWidth + "px";
+                    box.style.height = letterTileHeight + "px";
+
+                    const isAlreadyGuessed = guessedLetters.includes(char);
+                    
+                    if (isAlreadyGuessed) {
+                        box.className = "letter-box revealed-letter";
+                        box.innerText = char;
+                    } else {
+                        box.className = "letter-box hidden-letter";
+                        box.innerText = "?";
+                        if (CUSTOM_LETTER_BG_SRC) {
+                            box.style.backgroundImage = `url("${CUSTOM_LETTER_BG_SRC}")`;
+                        }
+                    }
+
+                    puzzleBoxes.push({
+                        char: char,
+                        element: box,
+                        isRevealed: isAlreadyGuessed
+                    });
+
+                    wordDiv.appendChild(box);
+                }
+
+                board.appendChild(wordDiv);
+            });
+
+            document.getElementById("category-badge").innerText = "KATEGORIA: " + categoryText;
+        }
+
+        function animateScore(player, targetScore) {
+            const scoreElem = document.getElementById(`p${player}-score`);
+            if (!scoreElem) return;
+
+            targetScore = Number(targetScore) || 0;
+            displayedScores[player] = Number(displayedScores[player]) || 0;
+
+            if (scoreIntervals[player]) {
+                clearInterval(scoreIntervals[player]);
+                scoreIntervals[player] = null;
+            }
+
+            const step = 10;
+
+            scoreIntervals[player] = setInterval(() => {
+                let current = displayedScores[player];
+
+                if (Math.abs(current - targetScore) < step) {
+                    displayedScores[player] = targetScore;
+                    clearInterval(scoreIntervals[player]);
+                    scoreIntervals[player] = null;
+                } else if (current < targetScore) {
+                    displayedScores[player] += step;
+                } else if (current > targetScore) {
+                    displayedScores[player] -= step;
+                }
+
+                scoreElem.innerText = displayedScores[player] + " pkt";
+            }, 20);
+        }
+
+        function updatePlayerUI() {
+            let targetP1 = (scores && scores[1] !== undefined) ? Number(scores[1]) : 0;
+            let targetP2 = (scores && scores[2] !== undefined) ? Number(scores[2]) : 0;
+
+            animateScore(1, targetP1);
+            animateScore(2, targetP2);
+
+            const p1Card = document.getElementById("p1-card");
+            const p2Card = document.getElementById("p2-card");
+            const p1Badge = document.getElementById("p1-badge");
+            const p2Badge = document.getElementById("p2-badge");
+
+            if (activePlayer === 1) {
+                p1Card.classList.add("active");
+                p2Card.classList.remove("active");
+                p1Badge.innerText = "RUCH DRUŻYNY 1";
+                p2Badge.innerText = "CZEKA...";
+            } else {
+                p2Card.classList.add("active");
+                p1Card.classList.remove("active");
+                p2Badge.innerText = "RUCH DRUŻYNY 2";
+                p1Badge.innerText = "CZEKA...";
+            }
+
+            updateCrownPosition();
+
+            const buyBtn = document.getElementById("buy-letter-btn");
+            if (buyBtn) {
+                const inputVisible = document.getElementById("input-section").style.display === "flex";
+                const isPuzzleWon = puzzleBoxes.length > 0 && puzzleBoxes.every(b => b.isRevealed);
+                buyBtn.disabled = Number(scores[activePlayer] || 0) < 1000 || isSpinning || inputVisible || isPuzzleWon;
+            }
+        }
+
+        function switchPlayer() {
+            activePlayer = activePlayer === 1 ? 2 : 1;
+            updatePlayerUI();
+        }
+
+        function showMessage(msg, type = "normal") {
+            const banner = document.getElementById("message-banner");
+            banner.innerText = msg;
+            banner.className = "";
+            if (type === "error") banner.classList.add("error");
+            if (type === "success") banner.classList.add("success");
+        }
+
+        function startSpinningFlow(e) {
+            if (e) e.stopPropagation();
+            document.getElementById("spin-btn").disabled = true;
+            document.getElementById("buy-letter-btn").disabled = true;
+            isSpinning = true;
+            canProceedToBoard = false;
+
+            document.getElementById("wheel-screen").classList.remove("clickable");
+            document.getElementById("board-screen").classList.add("hidden");
+            document.getElementById("wheel-screen").classList.remove("hidden");
+            
+            showMessage(`RUCH MA DRUŻYNA ${activePlayer}! KOŁO W RUCHU... CZEKAJ NA WYNIK.`);
+
+            spinWheel();
+        }
+
+        function triggerPointerBounce() {
+            const pointer = document.getElementById("pointer");
+            if (!pointer) return;
+
+            pointer.classList.remove("pointer-bounce");
+            void pointer.offsetWidth;
+            pointer.classList.add("pointer-bounce");
+        }
+
+        function spinWheel() {
+            let randomSector = Math.floor(Math.random() * numSectors);
+
+            const fullRotations = 360 * 3;
+            const sectorAngle = 360 / numSectors;
+            const targetSectorCenter = (randomSector + 0.5) * sectorAngle;
+            const finalDegrees = fullRotations + ((270 - targetSectorCenter + 360) % 360);
+
+            const startTime = performance.now();
+            const totalDuration = 7000;
+            let lastSectorIndex = -1;
+
+            canvas.style.transition = 'none';
+            canvas.style.transform = 'rotate(0deg)';
+
+            const t0 = 0.15;
+            const b = 1.41594;
+            const a = 11.5942;
+
+            function animateSpin(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / totalDuration, 1);
+
+                let easeProgress;
+                if (progress < t0) {
+                    easeProgress = a * progress * progress;
+                } else {
+                    easeProgress = 1 - b * Math.pow(1 - progress, 4);
+                }
+
+                const currentDegrees = finalDegrees * Math.min(Math.max(easeProgress, 0), 1);
+                canvas.style.transform = `rotate(${currentDegrees}deg)`;
+
+                const currentSectorIndex = Math.floor(((270 - (currentDegrees % 360) + 360) % 360) / sectorAngle);
+                
+                if (currentSectorIndex !== lastSectorIndex && progress < 0.995) {
+                    triggerPointerBounce();
+                    lastSectorIndex = currentSectorIndex;
+                }
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateSpin);
+                } else {
+                    canvas.style.transform = `rotate(${finalDegrees}deg)`;
+                    const result = sectors[randomSector];
+                    processWheelResult(result);
+                }
+            }
+
+            requestAnimationFrame(animateSpin);
+        }
+
+        function processWheelResult(result) {
+            isSpinning = false;
+
+            if (result.val === "BANKRUT") {
+                scores[activePlayer] = 0;
+                spunPrize = 0;
+                updatePlayerUI();
+                const nextP = activePlayer === 1 ? 2 : 1;
+                showMessage(`💥 BANKRUT! DRUŻYNA ${activePlayer} TRACI PUNKTY I RUCH! KLIKNIJ EKRAN (KOLEJ DLA DRUŻYNY ${nextP}).`, "error");
+                pendingCanGuess = false;
+            } else if (result.val === "STRATA") {
+                spunPrize = 0;
+                const nextP = activePlayer === 1 ? 2 : 1;
+                showMessage(`🛑 STRATA KOLEJKI! DRUŻYNA ${activePlayer} TRACI RUCH! KLIKNIJ EKRAN (KOLEJ DLA DRUŻYNY ${nextP}).`, "error");
+                pendingCanGuess = false;
+            } else if (typeof result.val === "string") {
+                spunPrize = 0;
+                showMessage(`🎁 WYLOSOWANO: ${result.label}! DRUŻYNA ${activePlayer}, KLIKNIJ EKRAN, ABY PODAĆ LITERĘ.`, "success");
+                pendingCanGuess = true;
+            } else {
+                spunPrize = Number(result.val) || 0;
+                showMessage(`WYLOSOWANO ${result.label}! DRUŻYNA ${activePlayer}, KLIKNIJ EKRAN, ABY PODAĆ LITERĘ.`, "success");
+                pendingCanGuess = true;
+            }
+
+            canProceedToBoard = true;
+            document.getElementById("wheel-screen").classList.add("clickable");
+        }
+
+        function buyLetterFlow(e) {
+            if (e) e.stopPropagation();
+            if (Number(scores[activePlayer] || 0) < 1000) {
+                showMessage(`DRUŻYNA ${activePlayer} NIE MA WYSTARCZAJĄCYCH PUNKTÓW! KUPNO LITERY KOSZTUJE 1000 PKT.`, "error");
+                return;
+            }
+
+            scores[activePlayer] = Math.max(0, Number(scores[activePlayer] || 0) - 1000);
+            updatePlayerUI();
+            spunPrize = 0;
+
+            document.getElementById("action-buttons").style.display = "none";
+            document.getElementById("input-section").style.display = "flex";
+            document.getElementById("letter-input").focus();
+            showMessage(`DRUŻYNA ${activePlayer} KUPUJE LITERĘ ZA 1000 PKT. WPISZ LITERĘ I ZATWIERDŹ!`, "success");
+        }
+
+        function guessLetter(e) {
+            if (e) e.stopPropagation();
+            const inputEl = document.getElementById("letter-input");
+            let letter = inputEl.value.toLocaleUpperCase('pl-PL').trim();
+            inputEl.value = "";
+
+            if (!letter || letter.length !== 1 || letter === " ") {
+                showMessage("WPISZ JEDNĄ POPRAWNĄ LITERĘ!", "error");
+                return;
+            }
+
+            if (guessedLetters.includes(letter)) {
+                showMessage(`LITERA "${letter}" BYŁA JUŻ SPRAWDZANA! PODAJ INNĄ.`, "error");
+                return;
+            }
+
+            guessedLetters.push(letter);
+            document.getElementById("submit-letter-btn").disabled = true;
+
+            let matchingBoxes = puzzleBoxes.filter(b => b.char === letter && !b.isRevealed);
+
+            if (matchingBoxes.length > 0) {
+                showMessage(`BRAWO! ODKRYWAMY LITERĘ "${letter}"...`, "success");
+
+                const stepDelay = 400;
+
+                matchingBoxes.forEach((boxObj, index) => {
+                    setTimeout(() => {
+                        boxObj.element.innerText = letter;
+                        boxObj.element.classList.remove("hidden-letter");
+                        boxObj.element.classList.add("revealed-letter", "reveal-anim");
+
+                        boxObj.isRevealed = true;
+
+                        setTimeout(() => {
+                            boxObj.element.classList.remove("reveal-anim");
+                        }, 600);
+                    }, index * stepDelay);
+                });
+
+                setTimeout(() => {
+                    let occurrences = matchingBoxes.length;
+                    let currentSpun = Number(spunPrize) || 0;
+                    let gain = Math.round((currentSpun * occurrences) / 10) * 10;
+                    
+                    scores[activePlayer] = Number(scores[activePlayer] || 0) + gain;
+                    updatePlayerUI();
+
+                    if (gain > 0) {
+                        showMessage(`Litera ${letter} występuje ${occurrences} raz(y). DRUŻYNA ${activePlayer} zyskuje ${gain} pkt!`, "success");
+                    } else {
+                        showMessage(`Litera ${letter} występuje ${occurrences} raz(y). DRUŻYNA ${activePlayer} zachowuje ruch!`, "success");
+                    }
+
+                    finishTurn(false);
+                }, matchingBoxes.length * stepDelay + 200);
+
+            } else {
+                const prevPlayer = activePlayer;
+                const nextPlayer = activePlayer === 1 ? 2 : 1;
+                const turnMsg = `❌ BRAK LITERY "${letter}"! DRUŻYNA ${prevPlayer} TRACI RUCH ➔ KOLEJKA PRZECHODZI DO DRUŻYNY ${nextPlayer}!`;
+                finishTurn(true, turnMsg);
+            }
+        }
+
+        function revealFullPuzzle() {
+            let unrevealed = puzzleBoxes.filter(b => !b.isRevealed);
+            
+            if (unrevealed.length === 0) {
+                showMessage("HASŁO JEST JUŻ W CAŁOŚCI ODKRYTE!", "success");
+                return;
+            }
+
+            document.getElementById("spin-btn").disabled = true;
+            document.getElementById("buy-letter-btn").disabled = true;
+
+            showMessage("UJAWNIAMY CAŁE HASŁO...", "success");
+
+            const stepDelay = 150;
+
+            unrevealed.forEach((boxObj, index) => {
+                setTimeout(() => {
+                    boxObj.element.innerText = boxObj.char;
+                    boxObj.element.classList.remove("hidden-letter");
+                    boxObj.element.classList.add("revealed-letter", "reveal-anim");
+
+                    boxObj.isRevealed = true;
+                    if (!guessedLetters.includes(boxObj.char)) {
+                        guessedLetters.push(boxObj.char);
+                    }
+
+                    setTimeout(() => {
+                        boxObj.element.classList.remove("reveal-anim");
+                    }, 600);
+                }, index * stepDelay);
+            });
+
+            setTimeout(() => {
+                showMessage(`GRATULACJE! HASŁO ODKRYTE! WYGRYWA DRUŻYNA ${activePlayer}!`, "success");
+                showWinnerAnnouncement();
+            }, unrevealed.length * stepDelay + 300);
+        }
+
+        function showWinnerAnnouncement() {
+            const winnerBanner = document.getElementById("winner-announcement");
+            if (winnerBanner) {
+                winnerBanner.innerText = `🏆 WYGRYWA DRUŻYNA ${activePlayer}! 🏆`;
+                winnerBanner.classList.remove("hidden");
+            }
+            if (typeof confetti === 'function') {
+                confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 }, scalar: 1.8 });
+                setTimeout(() => {
+                    confetti({ particleCount: 100, angle: 60, spread: 60, origin: { x: 0, y: 0.7 }, scalar: 1.8 });
+                    confetti({ particleCount: 100, angle: 120, spread: 60, origin: { x: 1, y: 0.7 }, scalar: 1.8 });
+                }, 400);
+                setTimeout(() => {
+                    confetti({ particleCount: 200, spread: 120, origin: { y: 0.4 }, startVelocity: 45, scalar: 1.8 });
+                }, 800);
+            }
+        }
+
+        function failPhraseGuess() {
+            if (isSpinning) return;
+            const prevPlayer = activePlayer;
+            const nextPlayer = activePlayer === 1 ? 2 : 1;
+            finishTurn(true, `❌ BŁĘDNE HASŁO! DRUŻYNA ${prevPlayer} TRACI RUCH ➔ TERAZ RUCH MA DRUŻYNA ${nextPlayer}!`);
+        }
+
+        function finishTurn(playerChanged = false, customMessage = null) {
+            document.getElementById("submit-letter-btn").disabled = false;
+            document.getElementById("input-section").style.display = "none";
+            document.getElementById("action-buttons").style.display = "flex";
+
+            if (playerChanged) {
+                switchPlayer();
+            }
+
+            checkWin(customMessage);
+        }
+
+        function checkWin(customMessage = null) {
+            let win = puzzleBoxes.every(b => b.isRevealed);
+
+            if (win) {
+                showMessage(`GRATULACJE! HASŁO ODKRYTE! WYGRYWA DRUŻYNA ${activePlayer}!`, "success");
+                showWinnerAnnouncement();
+                document.getElementById("spin-btn").disabled = true;
+                document.getElementById("buy-letter-btn").disabled = true;
+            } else {
+                document.getElementById("spin-btn").disabled = false;
+                updatePlayerUI();
+                if (customMessage) {
+                    showMessage(customMessage, "error");
+                } else {
+                    showMessage(`RUCH MA DRUŻYNA ${activePlayer}. ZAKRĘĆ KOŁEM LUB KUP LITERĘ!`);
+                }
+            }
+        }
+
+        document.getElementById("letter-input").addEventListener("keyup", function(event) {
+            if (event.key === "Enter") {
+                guessLetter(event);
+            }
+        });
+
+        window.addEventListener("keydown", function(event) {
+            if (document.activeElement && document.activeElement.id === "letter-input") {
+                return;
+            }
+
+            const code = event.code;
+            const key = event.key ? event.key.toLowerCase() : "";
+
+            const isX = code === "KeyX" || key === "x";
+            const isU = code === "KeyU" || key === "u";
+
+            if (event.key === "F8" || key === "8" || code === "Digit8" || (event.ctrlKey && event.shiftKey && isX)) {
+                event.preventDefault();
+                event.stopPropagation();
+                failPhraseGuess();
+            }
+
+            if (event.key === "F9" || key === "9" || code === "Digit9" || (event.ctrlKey && event.shiftKey && isU)) {
+                event.preventDefault();
+                event.stopPropagation();
+                revealFullPuzzle();
+            }
+        }, true);
+
+        window.addEventListener("resize", updateCrownPosition);
+
+        // Inicjalizacja
+        setBackgroundImage(CUSTOM_BG_IMAGE_SRC);
+        setPointerImage(CUSTOM_POINTER_IMAGE_SRC);
+        setEmojiImage(CUSTOM_EMOJI_IMAGE_SRC);
+        setPlayerCardImages(CUSTOM_PLAYER1_BG_SRC, CUSTOM_PLAYER2_BG_SRC);
+        setBoardBackgroundImage(CUSTOM_BOARD_BG_SRC);
+        setButtonImages(CUSTOM_SPIN_BTN_BG_SRC, CUSTOM_BUY_BTN_BG_SRC, CUSTOM_SUBMIT_BTN_BG_SRC);
+
+        updatePlayerUI();
+        drawWheel();
+        drawBoard();
+        setTimeout(updateCrownPosition, 150);
+    </script>
+</body>
+</html>
