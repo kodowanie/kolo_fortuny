@@ -327,8 +327,8 @@
             position: absolute;
             top: -110px;
             left: 0;
-            width: 90px;
-            height: 90px;
+            width: 110px;
+            height: 110px;
             z-index: 20;
             transition: transform 0.6s cubic-bezier(0.42, 0, 0.58, 1);
             pointer-events: none;
@@ -562,7 +562,7 @@
     </div>
 
     <div id="controls-bar">
-        <div id="message-banner">RUCH MA DRUŻYNA 1 - ZAKRĘĆ KOŁEM LUB KUP LITERĘ!</div>
+        <div id="message-banner">RUCH MA DRUŻYNA 1 - ZAKRĘĆ KOŁEM LUB KUP LITERĘ.</div>
 
         <div id="hud-controls-container">
             <div id="sliding-crown" class="sliding-crown">
@@ -811,11 +811,11 @@
                 document.getElementById("action-buttons").style.display = "none";
                 document.getElementById("input-section").style.display = "flex";
                 document.getElementById("letter-input").focus();
-                showMessage(`DRUŻYNA ${activePlayer}: WPISZ LITERĘ I ZATWIERDŹ!`, "success");
+                showMessage(`WPISZ LITERĘ I ZATWIERDŹ.`, "success");
             } else {
                 const prevP = activePlayer;
                 const nextP = activePlayer === 1 ? 2 : 1;
-                finishTurn(true, `🛑 DRUŻYNA ${prevP} STRACIŁA RUCH! TERAZ RUCH MA DRUŻYNA ${nextP}. ZAKRĘĆ KOŁEM LUB KUP LITERĘ!`);
+                finishTurn(true, `TERAZ RUCH MA DRUŻYNA ${nextP}. ZAKRĘĆ KOŁEM LUB KUP LITERĘ`);
             }
         }, true);
 
@@ -1174,7 +1174,7 @@
             document.getElementById("board-screen").classList.add("hidden");
             document.getElementById("wheel-screen").classList.remove("hidden");
             
-            showMessage(`RUCH MA DRUŻYNA ${activePlayer}! KOŁO W RUCHU... CZEKAJ NA WYNIK.`);
+            showMessage(`KOŁO W RUCHU... CZEKAJ NA WYNIK.`);
 
             spinWheel();
         }
@@ -1253,22 +1253,22 @@
                 spunPrize = 0;
                 updatePlayerUI();
                 const nextP = activePlayer === 1 ? 2 : 1;
-                showMessage(`💥 BANKRUT! DRUŻYNA ${activePlayer} TRACI PUNKTY I RUCH! KLIKNIJ EKRAN (KOLEJ DLA DRUŻYNY ${nextP}).`, "error");
+                showMessage(`💥 BANKRUT! DRUŻYNA ${activePlayer} TRACI PUNKTY I RUCH!`, "error");
                 pendingCanGuess = false;
             } else if (result.val === "STRATA") {
                 playSound('loseturn'); // DŹWIĘK: strata kolejki
                 spunPrize = 0;
                 const nextP = activePlayer === 1 ? 2 : 1;
-                showMessage(`🛑 STRATA KOLEJKI! DRUŻYNA ${activePlayer} TRACI RUCH! KLIKNIJ EKRAN (KOLEJ DLA DRUŻYNY ${nextP}).`, "error");
+                showMessage(`🛑 STRATA KOLEJKI! DRUŻYNA ${activePlayer} TRACI RUCH!`, "error");
                 pendingCanGuess = false;
             } else if (typeof result.val === "string") {
                 playSound('bonus'); // DŹWIĘK 5: wylosowanie bonusu / pol specjalnych
                 spunPrize = 0;
-                showMessage(`🎁 WYLOSOWANO: ${result.label}! DRUŻYNA ${activePlayer}, KLIKNIJ EKRAN, ABY PODAĆ LITERĘ.`, "success");
+                showMessage(`🎁 WYLOSOWANO: ${result.label}!, KLIKNIJ EKRAN, ABY PODAĆ LITERĘ.`, "success");
                 pendingCanGuess = true;
             } else {
                 spunPrize = Number(result.val) || 0;
-                showMessage(`WYLOSOWANO ${result.label}! DRUŻYNA ${activePlayer}, KLIKNIJ EKRAN, ABY PODAĆ LITERĘ.`, "success");
+                showMessage(`WYLOSOWANO ${result.label}!, KLIKNIJ EKRAN, ABY PODAĆ LITERĘ.`, "success");
                 pendingCanGuess = true;
             }
 
@@ -1291,7 +1291,7 @@
             document.getElementById("action-buttons").style.display = "none";
             document.getElementById("input-section").style.display = "flex";
             document.getElementById("letter-input").focus();
-            showMessage(`DRUŻYNA ${activePlayer} KUPUJE LITERĘ ZA 1000 PKT. WPISZ LITERĘ I ZATWIERDŹ!`, "success");
+            showMessage(`DRUŻYNA ${activePlayer} KUPUJE LITERĘ ZA 1000 PKT. WPISZ LITERĘ I ZATWIERDŹ.`, "success");
         }
 
         function guessLetter(e) {
@@ -1357,7 +1357,7 @@
                 playSound('loseturn'); // DŹWIĘK: błędna litera / strata kolejki
                 const prevPlayer = activePlayer;
                 const nextPlayer = activePlayer === 1 ? 2 : 1;
-                const turnMsg = `❌ BRAK LITERY "${letter}"! DRUŻYNA ${prevPlayer} TRACI RUCH ➔ KOLEJKA PRZECHODZI DO DRUŻYNY ${nextPlayer}!`;
+                const turnMsg = `❌ BRAK LITERY "${letter}" DRUŻYNA ${prevPlayer} TRACI RUCH ➔ KOLEJ NA DRUŻYNĘ ${nextPlayer}!`;
                 finishTurn(true, turnMsg);
             }
         }
@@ -1453,7 +1453,7 @@
                 if (customMessage) {
                     showMessage(customMessage, "error");
                 } else {
-                    showMessage(`RUCH MA DRUŻYNA ${activePlayer}. ZAKRĘĆ KOŁEM LUB KUP LITERĘ!`);
+                    showMessage(`RUCH MA DRUŻYNA ${activePlayer}. ZAKRĘĆ KOŁEM LUB KUP LITERĘ.`);
                 }
             }
         }
