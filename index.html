@@ -97,7 +97,6 @@
             border-radius: 20px;
             box-shadow: 0 0 50px rgba(56, 189, 248, 0.3), inset 0 0 30px rgba(0, 0, 0, 0.5);
             perspective: 1000px;
-            /* Minimalna wysokość na dokładnie 3 linie */
             min-height: 414px;
         }
 
@@ -158,7 +157,7 @@
         }
 
         .letter-box.hidden-letter {
-            color: transparent;
+            background-color: #0284c7;
         }
 
         .letter-box.reveal-anim {
@@ -598,21 +597,158 @@
     </div>
 
     <script>
-        let CUSTOM_WHEEL_IMAGE_SRC = "kolo.png";       
-        let CUSTOM_BG_IMAGE_SRC = "background.png";    
-        let CUSTOM_POINTER_IMAGE_SRC = "pointer.png";         
-        let CUSTOM_EMOJI_IMAGE_SRC = "hipek.png";      
+        // =========================================================================
+        // SCIEŻKI DO PLIKÓW DŹWIĘKOWYCH (MOŻNA PODMIENIĆ NA WŁASNE PLIKI MP3 / WAV / OGG)
+        // =========================================================================
+        let SOUND_WHEEL_CLICK_SRC   = "dzwieki/wheel_click.wav";   // 1. Klik obracanego koła
+        let SOUND_LETTER_REVEAL_SRC = "dzwieki/litera.wav"; // 2. Odkrywanie litery
+        let SOUND_PUZZLE_SOLVED_SRC = "dzwieki/solved.wav"; // 3. Odgadnięcie hasła (wygrana)
+        let SOUND_BANKRUPT_SRC       = "dzwieki/bankrupt.mp3";      // 4. Wylosowanie na kole bankruta
+        let SOUND_BONUS_SRC          = "dzwieki/bonus.mp3";         // 5. Wylosowanie na kole bonusu / nagrody
+        let SOUND_SCORE_ADD_SRC      = "dzwieki/coins.wav";     // 6. Doliczanie pieniędzy / punktów
+        let SOUND_LOSE_TURN_SRC      = "dzwieki/lose_turn.mp3";     // 7. Strata kolejki / błędna litera
 
-        let CUSTOM_PLAYER1_BG_SRC = "player1.png";     
-        let CUSTOM_PLAYER2_BG_SRC = "player2.png";     
-        let CUSTOM_BOARD_BG_SRC = "board_bg.png";      
-        let CUSTOM_LETTER_BG_SRC = "letter_tile.png";  
+        // SCIEŻKI DO GRAFIK
+        let CUSTOM_WHEEL_IMAGE_SRC = "grafika/kolo.png";       
+        let CUSTOM_BG_IMAGE_SRC = "grafika/background.png";    
+        let CUSTOM_POINTER_IMAGE_SRC = "grafika/pointer.png";         
+        let CUSTOM_EMOJI_IMAGE_SRC = "grafika/hipek.png";      
+        let CUSTOM_PLAYER1_BG_SRC = "grafika/player1.png";     
+        let CUSTOM_PLAYER2_BG_SRC = "grafika/player2.png";     
+        let CUSTOM_BOARD_BG_SRC = "grafika/board_bg.png";      
+        let CUSTOM_LETTER_BG_SRC = "grafika/letter_tile.png";  
+        let CUSTOM_SPIN_BTN_BG_SRC = "grafika/button_spin.png";     
+        let CUSTOM_BUY_BTN_BG_SRC = "grafika/button_buy.png";       
+        let CUSTOM_SUBMIT_BTN_BG_SRC = "grafika/button_submit.png"; 
 
-        let CUSTOM_SPIN_BTN_BG_SRC = "button_spin.png";     
-        let CUSTOM_BUY_BTN_BG_SRC = "button_buy.png";       
-        let CUSTOM_SUBMIT_BTN_BG_SRC = "button_submit.png"; 
+        let audioCtx = null;
 
-        const ENABLE_SOUND = false;
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    audioCtx = new AudioContext();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        // Główna funkcja odtwarzająca dźwięk z obsługą automatycznego powrotu do syntezatora
+        function playSound(soundType) {
+            getAudioContext();
+            let src = "";
+            switch(soundType) {
+                case 'click': src = SOUND_WHEEL_CLICK_SRC; break;
+                case 'reveal': src = SOUND_LETTER_REVEAL_SRC; break;
+                case 'solved': src = SOUND_PUZZLE_SOLVED_SRC; break;
+                case 'bankrupt': src = SOUND_BANKRUPT_SRC; break;
+                case 'bonus': src = SOUND_BONUS_SRC; break;
+                case 'score': src = SOUND_SCORE_ADD_SRC; break;
+                case 'loseturn': src = SOUND_LOSE_TURN_SRC; break;
+            }
+
+            if (src) {
+                let audio = new Audio(src);
+                let playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(() => {
+                        // Jeśli brak pliku mp3 lub zablokowane odtwarzanie -> użyj syntezatora
+                        playSynthSound(soundType);
+                    });
+                }
+            } else {
+                playSynthSound(soundType);
+            }
+        }
+
+        // Syntezator efektów dźwiękowych (działa natychmiastowo bez konieczności zewnętrznych plików)
+        function playSynthSound(type) {
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                if (type === 'click') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(700, now);
+                    osc.frequency.exponentialRampToValueAtTime(120, now + 0.035);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.035);
+                    osc.start(now);
+                    osc.stop(now + 0.035);
+                } else if (type === 'reveal') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.06);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+                    osc.start(now);
+                    osc.stop(now + 0.16);
+                } else if (type === 'solved') {
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, i) => {
+                        const nOsc = ctx.createOscillator();
+                        const nGain = ctx.createGain();
+                        nOsc.type = 'triangle';
+                        nOsc.frequency.setValueAtTime(freq, now + i * 0.12);
+                        nGain.gain.setValueAtTime(0.25, now + i * 0.12);
+                        nGain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.35);
+                        nOsc.connect(nGain);
+                        nGain.connect(ctx.destination);
+                        nOsc.start(now + i * 0.12);
+                        nOsc.stop(now + i * 0.12 + 0.35);
+                    });
+                } else if (type === 'bankrupt') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(320, now);
+                    osc.frequency.linearRampToValueAtTime(70, now + 0.5);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'bonus') {
+                    const notes = [440, 554.37, 659.25, 880];
+                    notes.forEach((freq, i) => {
+                        const bOsc = ctx.createOscillator();
+                        const bGain = ctx.createGain();
+                        bOsc.type = 'sine';
+                        bOsc.frequency.setValueAtTime(freq, now + i * 0.08);
+                        bGain.gain.setValueAtTime(0.2, now + i * 0.08);
+                        bGain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.22);
+                        bOsc.connect(bGain);
+                        bGain.connect(ctx.destination);
+                        bOsc.start(now + i * 0.08);
+                        bOsc.stop(now + i * 0.08 + 0.22);
+                    });
+                } else if (type === 'score') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(850, now);
+                    osc.frequency.exponentialRampToValueAtTime(1150, now + 0.05);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'loseturn') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.linearRampToValueAtTime(110, now + 0.35);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                }
+            } catch(e) {
+                console.warn("Błąd odtwarzania dźwięku:", e);
+            }
+        }
 
         let categoryText = "FILM SCIENCE FICTION";
         let puzzleWord = "TABLICA MENDELEJEWA W KLASIE CHEMICZNEJ";
@@ -650,12 +786,12 @@
             { label: "50 pkt", val: 50, color: "#2ecc71" },
             { label: "BANKRUT", val: "BANKRUT", color: "#111111" },
             { label: "150 pkt", val: 150, color: "#8b5cf6" },
-            { label: "ŚPIEWAJ", val: "ŚPIEWAJ", color: "#eab308" },
+            { label: "ŚPIEWAJ", val: 500, color: "#eab308" },
             { label: "200 pkt", val: 200, color: "#f39c12" },
-            { label: "KUPON NP VIP", val: "KUPON NP VIP", color: "#0284c7" },
-            { label: "GŁOS ŻABY", val: "GŁOS ŻABY", color: "#10b981" },
+            { label: "KUPON NP VIP", val: 500, color: "#0284c7" },
+            { label: "GŁOS ŻABY", val: 500, color: "#10b981" },
             { label: "150 pkt", val: 150, color: "#8b5cf6" },
-            { label: "DZIEŃ WOLNY OD SZKOŁY", val: "DZIEŃ WOLNY", color: "#06b6d4" }
+            { label: "DZIEŃ WOLNY OD SZKOŁY", val: 500, color: "#06b6d4" }
         ];
 
         const numSectors = sectors.length;
@@ -663,10 +799,8 @@
 
         /* NASŁUCHIWANIE KLIKNIĘĆ W DOWOLNYM MIEJSCU EKRANU (GLOBALNIE) */
         window.addEventListener("click", function(event) {
-            // Ignoruj kliknięcie, jeśli koło się kręci albo nie ma oczekiwania na przejście
+            getAudioContext();
             if (!canProceedToBoard || isSpinning) return;
-
-            // Ignoruj kliknięcie, jeśli kliknięto przycisk zmiany widoku koła
             if (event.target && event.target.id === "wheel-toggle-btn") return;
 
             canProceedToBoard = false;
@@ -927,7 +1061,7 @@
                         box.innerText = char;
                     } else {
                         box.className = "letter-box hidden-letter";
-                        box.innerText = "?";
+                        box.innerText = "";
                         if (CUSTOM_LETTER_BG_SRC) {
                             box.style.backgroundImage = `url("${CUSTOM_LETTER_BG_SRC}")`;
                         }
@@ -948,6 +1082,7 @@
             document.getElementById("category-badge").innerText = "KATEGORIA: " + categoryText;
         }
 
+        // Animacja punktów z odtwarzaniem dźwięku doliczania punktów (DŹWIĘK #6)
         function animateScore(player, targetScore) {
             const scoreElem = document.getElementById(`p${player}-score`);
             if (!scoreElem) return;
@@ -971,6 +1106,7 @@
                     scoreIntervals[player] = null;
                 } else if (current < targetScore) {
                     displayedScores[player] += step;
+                    playSound('score'); // DŹWIĘK 6: doliczanie pieniędzy (punktów)
                 } else if (current > targetScore) {
                     displayedScores[player] -= step;
                 }
@@ -1028,6 +1164,7 @@
 
         function startSpinningFlow(e) {
             if (e) e.stopPropagation();
+            getAudioContext();
             document.getElementById("spin-btn").disabled = true;
             document.getElementById("buy-letter-btn").disabled = true;
             isSpinning = true;
@@ -1042,6 +1179,7 @@
             spinWheel();
         }
 
+        // Tknięcie wskaźnika koła z odtwarzaniem kliknięcia (DŹWIĘK #1)
         function triggerPointerBounce() {
             const pointer = document.getElementById("pointer");
             if (!pointer) return;
@@ -1049,6 +1187,8 @@
             pointer.classList.remove("pointer-bounce");
             void pointer.offsetWidth;
             pointer.classList.add("pointer-bounce");
+            
+            playSound('click'); // DŹWIĘK 1: klik obracanego koła
         }
 
         function spinWheel() {
@@ -1103,10 +1243,12 @@
             requestAnimationFrame(animateSpin);
         }
 
+        // Obsługa wyniku losowania na kole (DŹWIĘKI #4 i #5)
         function processWheelResult(result) {
             isSpinning = false;
 
             if (result.val === "BANKRUT") {
+                playSound('bankrupt'); // DŹWIĘK 4: wylosowanie bankruta
                 scores[activePlayer] = 0;
                 spunPrize = 0;
                 updatePlayerUI();
@@ -1114,11 +1256,13 @@
                 showMessage(`💥 BANKRUT! DRUŻYNA ${activePlayer} TRACI PUNKTY I RUCH! KLIKNIJ EKRAN (KOLEJ DLA DRUŻYNY ${nextP}).`, "error");
                 pendingCanGuess = false;
             } else if (result.val === "STRATA") {
+                playSound('loseturn'); // DŹWIĘK: strata kolejki
                 spunPrize = 0;
                 const nextP = activePlayer === 1 ? 2 : 1;
                 showMessage(`🛑 STRATA KOLEJKI! DRUŻYNA ${activePlayer} TRACI RUCH! KLIKNIJ EKRAN (KOLEJ DLA DRUŻYNY ${nextP}).`, "error");
                 pendingCanGuess = false;
             } else if (typeof result.val === "string") {
+                playSound('bonus'); // DŹWIĘK 5: wylosowanie bonusu / pol specjalnych
                 spunPrize = 0;
                 showMessage(`🎁 WYLOSOWANO: ${result.label}! DRUŻYNA ${activePlayer}, KLIKNIJ EKRAN, ABY PODAĆ LITERĘ.`, "success");
                 pendingCanGuess = true;
@@ -1134,6 +1278,7 @@
 
         function buyLetterFlow(e) {
             if (e) e.stopPropagation();
+            getAudioContext();
             if (Number(scores[activePlayer] || 0) < 1000) {
                 showMessage(`DRUŻYNA ${activePlayer} NIE MA WYSTARCZAJĄCYCH PUNKTÓW! KUPNO LITERY KOSZTUJE 1000 PKT.`, "error");
                 return;
@@ -1151,6 +1296,7 @@
 
         function guessLetter(e) {
             if (e) e.stopPropagation();
+            getAudioContext();
             const inputEl = document.getElementById("letter-input");
             let letter = inputEl.value.toLocaleUpperCase('pl-PL').trim();
             inputEl.value = "";
@@ -1177,6 +1323,7 @@
 
                 matchingBoxes.forEach((boxObj, index) => {
                     setTimeout(() => {
+                        playSound('reveal'); // DŹWIĘK 2: odkrywanie litery
                         boxObj.element.innerText = letter;
                         boxObj.element.classList.remove("hidden-letter");
                         boxObj.element.classList.add("revealed-letter", "reveal-anim");
@@ -1207,6 +1354,7 @@
                 }, matchingBoxes.length * stepDelay + 200);
 
             } else {
+                playSound('loseturn'); // DŹWIĘK: błędna litera / strata kolejki
                 const prevPlayer = activePlayer;
                 const nextPlayer = activePlayer === 1 ? 2 : 1;
                 const turnMsg = `❌ BRAK LITERY "${letter}"! DRUŻYNA ${prevPlayer} TRACI RUCH ➔ KOLEJKA PRZECHODZI DO DRUŻYNY ${nextPlayer}!`;
@@ -1231,6 +1379,7 @@
 
             unrevealed.forEach((boxObj, index) => {
                 setTimeout(() => {
+                    playSound('reveal'); // DŹWIĘK 2: odkrywanie litery przy odsłanianiu całego hasła
                     boxObj.element.innerText = boxObj.char;
                     boxObj.element.classList.remove("hidden-letter");
                     boxObj.element.classList.add("revealed-letter", "reveal-anim");
@@ -1253,6 +1402,7 @@
         }
 
         function showWinnerAnnouncement() {
+            playSound('solved'); // DŹWIĘK 3: odgadnięcie hasła / wygrana
             const winnerBanner = document.getElementById("winner-announcement");
             if (winnerBanner) {
                 winnerBanner.innerText = `🏆 WYGRYWA DRUŻYNA ${activePlayer}! 🏆`;
@@ -1340,7 +1490,7 @@
 
         window.addEventListener("resize", updateCrownPosition);
 
-        // Inicjalizacja
+        // Inicjalizacja gry
         setBackgroundImage(CUSTOM_BG_IMAGE_SRC);
         setPointerImage(CUSTOM_POINTER_IMAGE_SRC);
         setEmojiImage(CUSTOM_EMOJI_IMAGE_SRC);
